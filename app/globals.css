@@ -88,3 +88,7 @@ html[data-club] .match.favoriteMatch .versus{color:var(--club)!important}
 .simpleMeta,.simpleMeta span,.simpleMeta .themeDot{color:#111!important}
 .score i{color:#111!important}
 html[data-club] .match.favoriteMatch .score i{color:#111!important}
+
+/* Score colon: neutral normally, club accent only on selected-team matches */
+.score i{color:#111!important}
+html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
