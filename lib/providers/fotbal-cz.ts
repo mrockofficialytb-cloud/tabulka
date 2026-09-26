@@ -44,7 +44,7 @@ async function loadLiveData(): Promise<RenderFeed | null> {
 
 export async function getCompetitionFeed(): Promise<CompetitionFeed> {
   const remote = await loadLiveData();
-  const local = generated as RenderFeed;
+  const local = generated as unknown as RenderFeed;
   const live = (remote?.matches?.length ? remote.matches : local.matches ?? []) as GeneratedMatch[];
   const liveByFixture = new Map(live.map((m) => [key(m.home, m.away), m]));
 
