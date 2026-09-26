@@ -14,9 +14,9 @@ export default function ClubTheme({teams}:{teams:T[]}){
    const isMine=el.dataset.home===name||el.dataset.away===name;
    el.classList.toggle("favoriteMatch",isMine);el.classList.toggle("hiddenByTeamFilter",onlyMine&&!isMine);
   });
-  setSelected(name);setMine(onlyMine);
+  document.querySelectorAll<HTMLDetailsElement>(".matchAccordion").forEach(d=>{const n=d.querySelectorAll(".match:not(.hiddenByTeamFilter)").length;const badge=d.querySelector<HTMLElement>(".accCount");if(badge)badge.textContent=String(n)});setSelected(name);setMine(onlyMine);
  };
- useEffect(()=>{const s=localStorage.getItem("favoriteTeam"),m=localStorage.getItem("onlyFavoriteMatches")==="1";if(s&&colors[s])mark(s,m);else setOpen(true)},[]);
+ useEffect(()=>{const s=localStorage.getItem("favoriteTeam"),m=localStorage.getItem("onlyFavoriteMatches")==="1";if(s&&colors[s])mark(s,m);else setOpen(true);const ds=[...document.querySelectorAll<HTMLDetailsElement>(".matchAccordion")];const onToggle=(e:Event)=>{const cur=e.currentTarget as HTMLDetailsElement;if(cur.open)ds.forEach(d=>{if(d!==cur)d.open=false})};ds.forEach(d=>d.addEventListener("toggle",onToggle));return()=>ds.forEach(d=>d.removeEventListener("toggle",onToggle))},[]);
  const choose=(name:string)=>{localStorage.setItem("favoriteTeam",name);mark(name,mine);setOpen(false)};
  const toggleMine=()=>{if(!selected)return;const n=!mine;localStorage.setItem("onlyFavoriteMatches",n?"1":"0");mark(selected,n)};
  const t=teams.find(x=>x.name===selected);
