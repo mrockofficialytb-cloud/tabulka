@@ -12,11 +12,11 @@ export const teams:Team[]=[
  {name:"TJ Viktoria Budyně nad Ohří",short:"Budyně",logo:"/logos/budyne.svg"},
  {name:"TJ Sokol Černiv",short:"Černiv",logo:"/logos/cerniv.svg"},
  {name:"TJ Slavoj Sulejovice / FK Vchynice",short:"Vchynice / Sulejovice",logo:"/logos/sulejovice-vchynice.svg"},
- {name:"SK Sokol Brozany",short:"Brozany",logo:"/logos/brozany.svg"},
- {name:"SK Velemín",short:"Velemín",logo:"/logos/velemin.svg"},
- {name:"SK Sokol Malé Žernoseky",short:"Malé Žernoseky",logo:"/logos/male-zernoseky.svg"},
+ {name:"SK Sokol Brozany",short:"Brozany",logo:"https://is1.fotbal.cz/media/kluby/fbb0d0a0-8e35-42ee-82a3-539cc0139a92/fbb0d0a0-8e35-42ee-82a3-539cc0139a92_crop.jpg"},
+ {name:"SK Velemín",short:"Velemín",logo:"https://is1.fotbal.cz/media/kluby/b39254fd-10e7-4709-a74d-61821236d058/b39254fd-10e7-4709-a74d-61821236d058_crop.jpg"},
+ {name:"SK Sokol Malé Žernoseky",short:"Malé Žernoseky",logo:"https://is1.fotbal.cz/media/kluby/795d26d8-28ee-4b1c-bd95-6c7d993ea156/795d26d8-28ee-4b1c-bd95-6c7d993ea156_crop.jpg"},
  {name:"Městský Sportovní klub Třebenice",short:"Třebenice",logo:"/logos/trebenice.svg"},
- {name:"Dynamo Podlusky",short:"Podlusky",logo:"/logos/podlusky.svg"},
+ {name:"Dynamo Podlusky",short:"Podlusky",logo:"https://is1.fotbal.cz/media/kluby/52272942-1af6-4dd5-b1dc-ca2b6050aeb9/52272942-1af6-4dd5-b1dc-ca2b6050aeb9_crop.jpg"},
  {name:"ASK Lovosice",short:"Lovosice",logo:"/logos/lovosice.svg"},
 ];
 
