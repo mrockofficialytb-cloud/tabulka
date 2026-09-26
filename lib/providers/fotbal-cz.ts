@@ -1,56 +1,12 @@
 import type { Match } from "../standings";
 import { competition, fallbackMatches } from "../data";
-
-export type CompetitionFeed = {
-  matches: Match[];
-  source: "fotbal.cz" | "fallback";
-  updatedAt: string;
-  error?: string;
-};
-
-function htmlToText(html: string) {
-  return html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export async function getCompetitionFeed(): Promise<CompetitionFeed> {
-  try {
-    const res = await fetch(competition.sourceUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TabulkaBrozany/1.0)",
-        "Accept-Language": "cs-CZ,cs;q=0.9",
-      },
-      next: { revalidate: 1800 },
-    });
-
-    if (!res.ok) throw new Error(`Fotbal.cz HTTP ${res.status}`);
-
-    const html = await res.text();
-    const plain = htmlToText(html);
-    const known = ["SK Sokol Brozany", "ASK Lovosice", "SK Velemín", "TJ Sokol Černiv"];
-
-    if (!known.some((name) => plain.toLowerCase().includes(name.toLowerCase()))) {
-      throw new Error("Stránka neobsahuje očekávaná data soutěže");
-    }
-
-    return {
-      matches: fallbackMatches,
-      source: "fallback",
-      updatedAt: new Date().toISOString(),
-      error: "Fotbal.cz je dosažitelný; čeká se na ověření HTML parseru.",
-    };
-  } catch (error) {
-    return {
-      matches: fallbackMatches,
-      source: "fallback",
-      updatedAt: new Date().toISOString(),
-      error: error instanceof Error ? error.message : "Chyba načtení",
-    };
-  }
-}
+export type CompetitionFeed={matches:Match[];source:"fotbal.cz"|"fallback";updatedAt:string;error?:string};
+const aliases:[string,string[]][]=[
+["SK Sokol Brozany",["SK Sokol Brozany"]],["ASK Lovosice",["ASK FK Lovosice","ASK Lovosice"]],["SK Velemín",["SK Velemín / Milešov","SK Velemín/Milešov","SK Velemín"]],["TJ Viktoria Budyně nad Ohří",["TJ Viktorie Budyně nad Ohří","TJ Viktoria Budyně nad Ohří"]],["TJ Sokol Černiv",["TJ Sokol Černiv"]],["TJ Slavoj Sulejovice / FK Vchynice",["FK Vchynice / Sulejovice","FK Vchynice/Sulejovice","TJ Slavoj Sulejovice / FK Vchynice"]],["SK Sokol Malé Žernoseky",["SK SOKOL Malé Žernoseky","SK Sokol Malé Žernoseky"]],["Městský Sportovní klub Třebenice",["MSK Třebenice","Městský Sportovní klub Třebenice"]],["Dynamo Podlusky",["TJ Dynamo Podlusky","Dynamo Podlusky"]]];
+function decode(s:string){return s.replace(/&nbsp;|&#160;/gi," ").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/<script[^>]*>[\s\S]*?<\/script>/gi," ").replace(/<style[^>]*>[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()}
+function esc(s:string){return s.replace(/[.*+?^$()|[\]{}\\]/g,"\\$&")}
+const variants=aliases.flatMap(([canonical,names])=>names.map(name=>({canonical,name}))).sort((a,b)=>b.name.length-a.name.length);
+const teamPattern=variants.map(v=>esc(v.name)).join("|");
+function canonical(raw:string){const low=raw.toLocaleLowerCase("cs-CZ");return variants.find(v=>v.name.toLocaleLowerCase("cs-CZ")===low)?.canonical}
+function parse(html:string):Match[]{const text=decode(html);const occurrences:{name:string;start:number;end:number}[]=[];for(const m of text.matchAll(new RegExp(teamPattern,"gi"))){const name=canonical(m[0]);if(name&&m.index!==undefined)occurrences.push({name,start:m.index,end:m.index+m[0].length})}const out:Match[]=[];const seen=new Set<string>();for(let i=0;i<occurrences.length-1;i++){const a=occurrences[i],b=occurrences[i+1];if(a.name===b.name||b.start-a.end>260)continue;const between=text.slice(a.end,b.start);const scores=[...between.matchAll(/(?:^|\s)(\d{1,2})\s*:\s*(\d{1,2})(?=\s|$)/g)];if(scores.length!==1)continue;const hs=Number(scores[0][1]),as=Number(scores[0][2]);if(as===0&&hs>=7&&hs<=23)continue;const key=a.name+"|"+b.name+"|"+hs+":"+as;if(seen.has(key))continue;seen.add(key);out.push({home:a.name,away:b.name,homeScore:hs,awayScore:as,played:true})}return out}
+export async function getCompetitionFeed():Promise<CompetitionFeed>{try{const res=await fetch(competition.sourceUrl,{headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","Accept-Language":"cs-CZ,cs;q=0.9","Accept":"text/html,application/xhtml+xml"},next:{revalidate:1800}});if(!res.ok)throw new Error("Fotbal.cz HTTP "+res.status);const html=await res.text();const matches=parse(html);if(matches.length<4)throw new Error("Parser našel pouze "+matches.length+" výsledků");return{matches,source:"fotbal.cz",updatedAt:new Date().toISOString()}}catch(error){return{matches:fallbackMatches,source:"fallback",updatedAt:new Date().toISOString(),error:error instanceof Error?error.message:"Chyba načtení"}}}
