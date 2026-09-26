@@ -103,3 +103,9 @@ html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
  .match .side:not(.away) strong{padding-left:44px}
  .match .side.away strong{padding-right:44px}
 }
+
+/* Center selected-club logo inside its round bubble */
+.clubControls .changeClub{width:46px;height:46px;padding:0!important;border-radius:50%;display:grid!important;place-items:center!important;flex:0 0 46px;overflow:hidden}
+.clubControls .changeClub img{display:block!important;width:28px!important;height:28px!important;object-fit:contain!important;margin:0!important}
+.clubControls .changeClub span{display:none!important}
+@media(max-width:600px){.clubControls .changeClub{width:46px;height:46px;flex-basis:46px}.clubControls .changeClub img{width:28px!important;height:28px!important}}
