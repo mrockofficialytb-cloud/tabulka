@@ -26,7 +26,7 @@ export async function getCompetitionFeed(): Promise<CompetitionFeed> {
         "User-Agent": "Mozilla/5.0 (compatible; TabulkaBrozany/1.0)",
         "Accept-Language": "cs-CZ,cs;q=0.9",
       },
-      next: { revalidate: 300 },
+      next: { revalidate: 1800 },
     });
 
     if (!res.ok) throw new Error(`Fotbal.cz HTTP ${res.status}`);
