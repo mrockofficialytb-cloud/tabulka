@@ -19,7 +19,7 @@ const page = await context.newPage();
 
 try {
   console.log("1/4 Otevírám IS FAČR...");
-  await page.goto("https://is.fotbal.cz/?discipline=football", {
+  await page.goto("https://is.fotbal.cz/?discipline=football?discipline=football", {
     waitUntil: "domcontentloaded",
     timeout: 30000,
   });
@@ -75,8 +75,8 @@ try {
     cookies.map((c) => c.name).filter((n) => /access|refresh|session/i.test(n)).join(", ") || "(žádné rozpoznané)"
   );
 
-  console.log("3/4 Otevírám přehled zápasů...");
-  const response = await page.goto(TARGET, {
+  console.log("3/4 Otevírám přehled zápasů přes odkaz...");
+  const response = await page.goto(TARGET + "&utm_source=chatgpt.com", {
     waitUntil: "domcontentloaded",
     timeout: 30000,
   });
