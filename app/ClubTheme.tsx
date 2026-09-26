@@ -12,7 +12,7 @@ export default function ClubTheme({teams}:{teams:T[]}){
   root.classList.toggle("onlyMine",onlyMine);
   document.querySelectorAll<HTMLElement>(".match[data-home][data-away]").forEach(el=>{
    const isMine=el.dataset.home===name||el.dataset.away===name;
-   el.classList.toggle("favoriteMatch",isMine);el.style.display=onlyMine&&!isMine?"none":"";
+   el.classList.toggle("favoriteMatch",isMine);el.classList.toggle("hiddenByTeamFilter",onlyMine&&!isMine);
   });
   setSelected(name);setMine(onlyMine);
  };
