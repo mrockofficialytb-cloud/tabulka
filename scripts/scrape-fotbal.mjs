@@ -52,46 +52,48 @@ export async function scrapeCompetition() {
     await page.waitForLoadState("domcontentloaded").catch(() => {});
     await page.waitForTimeout(1000);
 
-    // 1. vstup vytvoří legacy ASP.NET session
-    await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(500);
-    // 2. vstup už otevře skutečný přehled
+    // 1. vstup vytvoří legacy ASP.NET session. FAČR při tom schválně
+    // přesměruje zpět do nového IS; Playwright může tento přechod hlásit
+    // jako "navigation interrupted", což není chyba.
+    try {
+      await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/interrupted by another navigation/i.test(message)) throw error;
+    }
+    await page.waitForTimeout(1200);
+
+    // 2. vstup už díky legacy cookies otevře skutečný přehled
     const response = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
     if (response?.status() !== 200 || !page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
       throw new Error(`FAČR přehled není dostupný, HTTP ${response?.status() ?? "?"}, URL ${page.url()}`);
     }
 
-    // Přehled je stránkovaný po 50 řádcích. Načti postupně všechny stránky.
+    // Přehled je stránkovaný po 50 řádcích. FAČR uvádí např.
+    // "Zobrazeno 1 - 50 z 60", takže projdeme všechny číslované stránky.
     const allRows = [];
-    const seenFirstMatchIds = new Set();
+    const bodyText = await page.locator("body").innerText();
+    const totalMatch = bodyText.match(/Zobrazeno\s+\d+\s*-\s*\d+\s+z\s+(\d+)/i);
+    const expectedTotal = totalMatch ? Number(totalMatch[1]) : null;
+    let pageNumber = 1;
 
     while (true) {
-      await page.waitForTimeout(300);
-
       const rows = await page.locator("tr").evaluateAll((trs) =>
         trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " ")))
       );
-
       const matchRows = rows.filter((cells) => /^2026423H1B\d{4}$/.test(cells[0] || ""));
-      if (!matchRows.length) break;
-
-      const firstId = matchRows[0][0];
-      if (seenFirstMatchIds.has(firstId)) break;
-      seenFirstMatchIds.add(firstId);
       allRows.push(...matchRows);
 
-      const next = page.locator('a[title*="další" i], a[aria-label*="next" i], a:has-text("›"), a:has-text("→")').last();
-      const nextCount = await next.count();
-      if (!nextCount || !(await next.isVisible().catch(() => false))) break;
+      if (expectedTotal && allRows.length >= expectedTotal) break;
 
-      const href = await next.getAttribute("href");
-      const cls = (await next.getAttribute("class")) || "";
-      if (!href || /disabled/i.test(cls)) break;
+      const nextPageNumber = pageNumber + 1;
+      const nextPage = page.locator("a").filter({ hasText: new RegExp(`^\\s*${nextPageNumber}\\s*$`) }).first();
+      if (!(await nextPage.count()) || !(await nextPage.isVisible().catch(() => false))) break;
 
-      await Promise.all([
-        page.waitForLoadState("domcontentloaded").catch(() => {}),
-        next.click(),
-      ]);
+      await nextPage.click();
+      await page.waitForLoadState("domcontentloaded").catch(() => {});
+      await page.waitForTimeout(500);
+      pageNumber = nextPageNumber;
     }
 
     const rows = allRows;
