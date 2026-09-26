@@ -83,3 +83,8 @@ html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
 html[data-club] .match.favoriteMatch .versus{color:var(--club)!important}
 .accRight .chevron{width:9px;height:9px;display:block;border-right:2px solid #64748b;border-bottom:2px solid #64748b;transform:rotate(45deg);transition:transform .2s ease;margin:0 4px 4px 6px}
 .matchAccordion[open] .accRight .chevron{transform:rotate(225deg);margin-bottom:-4px}
+
+/* Keep neutral text accents black */
+.simpleMeta,.simpleMeta span,.simpleMeta .themeDot{color:#111!important}
+.score i{color:#111!important}
+html[data-club] .match.favoriteMatch .score i{color:#111!important}
