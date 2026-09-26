@@ -74,3 +74,12 @@ html.onlyMine .match:not(.favoriteMatch){display:none}
 
 /* Reliable favorite-team filtering; overrides existing match display rules */
 .match.hiddenByTeamFilter{display:none!important}
+
+/* Theme polish */
+html[data-club] .simpleMeta .themeDot{color:var(--club)}
+html[data-club] .accRight .accCount{color:var(--club);background:color-mix(in srgb,var(--club) 9%,white)}
+.matchMeta b{color:#111!important}
+html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
+html[data-club] .match.favoriteMatch .versus{color:var(--club)!important}
+.accRight .chevron{width:9px;height:9px;display:block;border-right:2px solid #64748b;border-bottom:2px solid #64748b;transform:rotate(45deg);transition:transform .2s ease;margin:0 4px 4px 6px}
+.matchAccordion[open] .accRight .chevron{transform:rotate(225deg);margin-bottom:-4px}
