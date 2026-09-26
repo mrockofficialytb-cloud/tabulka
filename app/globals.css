@@ -94,7 +94,8 @@ html[data-club] .match.favoriteMatch .score i{color:#111!important}
 html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
 
 /* Winner label centered between club name and score */
-.match .side{position:relative}
-.match .winLabel{position:absolute;left:calc(100% + 18px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#16a34a;white-space:nowrap}
-.match .side.away .winLabel{left:auto;right:calc(100% + 18px)}
-@media(max-width:600px){.match .winLabel{left:calc(100% + 8px);font-size:8px}.match .side.away .winLabel{right:calc(100% + 8px)}}
+.match{position:relative}
+.match .winLabel{position:absolute;top:50%;transform:translateY(-50%);z-index:3;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#16a34a;white-space:nowrap}
+.match .side:not(.away) .winLabel{left:36%}
+.match .side.away .winLabel{right:36%}
+@media(max-width:600px){.match .winLabel{font-size:8px}.match .side:not(.away) .winLabel{left:34%}.match .side.away .winLabel{right:34%}}
