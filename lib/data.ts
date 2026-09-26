@@ -9,15 +9,15 @@ export const competition={
 };
 
 export const teams:Team[]=[
- {name:"TJ Viktoria Budyně nad Ohří",short:"Budyně",logo:"/logos/budyne.png"},
- {name:"TJ Sokol Černiv",short:"Černiv",logo:"/logos/cerniv.png"},
- {name:"TJ Slavoj Sulejovice / FK Vchynice",short:"Vchynice / Sulejovice",logo:"/logos/vchynice.png"},
- {name:"SK Sokol Brozany",short:"Brozany",logo:"/logos/brozany.png"},
- {name:"SK Velemín",short:"Velemín",logo:"/logos/velemin.png"},
- {name:"SK Sokol Malé Žernoseky",short:"Malé Žernoseky",logo:"/logos/zernoseky.png"},
- {name:"Městský Sportovní klub Třebenice",short:"Třebenice",logo:"/logos/trebenice.png"},
- {name:"Dynamo Podlusky",short:"Podlusky",logo:"/logos/podlusky.png"},
- {name:"ASK Lovosice",short:"Lovosice",logo:"/logos/lovosice.png"},
+ {name:"TJ Viktoria Budyně nad Ohří",short:"Budyně",logo:"/logos/budyne.webp"},
+ {name:"TJ Sokol Černiv",short:"Černiv",logo:"/logos/cerniv.webp"},
+ {name:"TJ Slavoj Sulejovice / FK Vchynice",short:"Vchynice / Sulejovice",logo:"/logos/vchynice.webp"},
+ {name:"SK Sokol Brozany",short:"Brozany",logo:"/logos/brozany.webp"},
+ {name:"SK Velemín",short:"Velemín",logo:"/logos/velemin.webp"},
+ {name:"SK Sokol Malé Žernoseky",short:"Malé Žernoseky",logo:"/logos/zernoseky.webp"},
+ {name:"Městský Sportovní klub Třebenice",short:"Třebenice",logo:"/logos/trebenice.webp"},
+ {name:"Dynamo Podlusky",short:"Podlusky",logo:"/logos/podlusky.webp"},
+ {name:"ASK Lovosice",short:"Lovosice",logo:"/logos/lovosice.webp"},
 ];
 
 export const fixtures:Fixture[]=[
