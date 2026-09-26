@@ -121,6 +121,21 @@ try {
   );
   console.log("Relevantní odkazy:", JSON.stringify(links.map(x => ({ text: x.text, href: safeUrl(x.href) })), null, 2));
 
+  console.log("4b/5 Čtu strukturu tabulky utkání...");
+  const tableRows = await page.locator("tr").evaluateAll((rows) =>
+    rows.map((tr, index) => ({
+      index,
+      cells: Array.from(tr.querySelectorAll("th,td")).map((cell) =>
+        (cell.textContent || "").trim().replace(/\\s+/g, " ")
+      ),
+    })).filter((row) =>
+      row.cells.some((cell) => /2026423H1B|Brozany|Velemín|Vchynice|Žernoseky|Budyně|Černiv|Lovosice|Podlusky|Třebenice/i.test(cell))
+    )
+  );
+  console.log("MATCH_ROWS_START");
+  console.log(JSON.stringify(tableRows, null, 2));
+  console.log("MATCH_ROWS_END");
+
   const bodyText = await page.locator("body").innerText().catch(() => "");
   const lower = bodyText.toLocaleLowerCase("cs-CZ");
   console.log("Brozany:", lower.includes("brozany"));
