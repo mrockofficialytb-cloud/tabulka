@@ -114,3 +114,7 @@ html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
 .clubControls .changeClub{width:auto!important;height:auto!important;min-width:0!important;flex:0 0 auto!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;display:grid!important;place-items:center!important}
 .clubControls .changeClub img{width:34px!important;height:34px!important;display:block!important;object-fit:contain!important;margin:0!important}
 @media(max-width:600px){.clubControls .changeClub{width:auto!important;height:auto!important;flex-basis:auto!important}.clubControls .changeClub img{width:34px!important;height:34px!important}}
+
+/* Sharper club crests at normal browser zoom */
+.standings img{width:36px!important;height:36px!important;object-fit:contain!important;flex:0 0 36px}
+@media(max-width:600px){.standings img{width:32px!important;height:32px!important;flex-basis:32px}}
