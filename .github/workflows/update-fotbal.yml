@@ -1,4 +1,4 @@
-name: Test IS FAČR
+name: Test FAČR login
 
 on:
   workflow_dispatch:
@@ -7,9 +7,9 @@ permissions:
   contents: read
 
 jobs:
-  test-is-facr:
+  test-facr-login:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,5 +19,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Test veřejného IS FAČR
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Test přihlášení a přehledu zápasů
+        env:
+          FACR_USERNAME: ${{ secrets.FACR_USERNAME }}
+          FACR_PASSWORD: ${{ secrets.FACR_PASSWORD }}
         run: node scripts/scrape-fotbal.mjs
