@@ -1,5 +1,5 @@
 import{calculateStandings}from"../lib/standings";import{competition,fixtures,teams}from"../lib/data";import{getCompetitionFeed}from"../lib/providers/fotbal-cz";
-export const revalidate=300;
+export const revalidate=1800;
 const team=(n:string)=>teams.find(t=>t.name===n);
 const date=(d?:string)=>d?new Intl.DateTimeFormat("cs-CZ",{day:"numeric",month:"numeric"}).format(new Date(d+"T12:00:00")):"";
 export default async function Home(){const feed=await getCompetitionFeed();const rows=calculateStandings(teams,feed.matches);const results=fixtures.filter(x=>x.played).sort((a,b)=>(b.date||"").localeCompare(a.date||""));const upcoming=fixtures.filter(x=>!x.played).sort((a,b)=>(a.date||"9999").localeCompare(b.date||"9999"));return <main>
