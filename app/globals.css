@@ -67,3 +67,7 @@ html[data-club] .match.favoriteMatch{border-color:color-mix(in srgb,var(--club) 
 html[data-club] .match.favoriteMatch .score,html[data-club] .match.favoriteMatch .versus{color:var(--club)}
 html.onlyMine .match:not(.favoriteMatch){display:none}
 @media(max-width:600px){.clubControls{top:10px;right:10px}.clubControls .changeClub{position:static}.mineToggle{padding:10px 11px;font-size:11px}}
+
+/* Favorite-team filter switch */
+.teamFilter{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:7px 8px 7px 13px;box-shadow:0 8px 30px #00000012;font-size:12px;font-weight:800;white-space:nowrap}.switch{width:42px;height:24px;border:0;border-radius:999px;background:#d1d5db;padding:3px;cursor:pointer;transition:.2s}.switch i{display:block;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0003;transition:.2s}.switch.active{background:var(--club)}.switch.active i{transform:translateX(18px)}.switch:disabled{opacity:.45;cursor:default}
+@media(max-width:600px){.teamFilter{padding-left:10px;gap:7px;font-size:10px}.switch{width:38px;height:22px}.switch i{width:16px;height:16px}.switch.active i{transform:translateX(16px)}}
