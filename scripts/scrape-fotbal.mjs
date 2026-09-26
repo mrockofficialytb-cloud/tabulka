@@ -1,149 +1,114 @@
 import { chromium } from "playwright";
 
-const USERNAME = process.env.FACR_USERNAME;
-const PASSWORD = process.env.FACR_PASSWORD;
 const COMPETITION_ID = "cb23dcde-b42b-4e12-ba8b-5344d9a32bb0";
 const LOGIN_URL = "https://is.fotbal.cz/?discipline=football";
 const TARGET = `https://is.fotbal.cz/public/zapasy/prehled-zapasu.aspx?soutez=${COMPETITION_ID}&utm_source=chatgpt.com`;
 
-if (!USERNAME || !PASSWORD) {
-  throw new Error("Chybí FACR_USERNAME nebo FACR_PASSWORD v Environment Variables.");
+const CLUBS = {
+  "4230071": "TJ Viktoria Budyně nad Ohří",
+  "4230121": "TJ Sokol Černiv",
+  "4230381": "SK Sokol Malé Žernoseky",
+  "4230721": "TJ Slavoj Sulejovice / FK Vchynice",
+  "4230701": "SK Velemín",
+  "4230061": "SK Sokol Brozany",
+  "4230461": "Dynamo Podlusky",
+  "4231011": "Městský Sportovní klub Třebenice",
+  "4230351": "ASK Lovosice",
+};
+
+function parseDate(value) {
+  const m = value.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}:\d{2})$/);
+  if (!m) return { date: null, time: null };
+  return { date: `${m[3]}-${m[2]}-${m[1]}`, time: m[4] };
 }
 
-const browser = await chromium.launch({
-  headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage"],
-});
-const context = await browser.newContext({
-  locale: "cs-CZ",
-  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
-});
-const page = await context.newPage();
+export async function scrapeCompetition() {
+  const USERNAME = process.env.FACR_USERNAME;
+  const PASSWORD = process.env.FACR_PASSWORD;
+  if (!USERNAME || !PASSWORD) throw new Error("Chybí FACR_USERNAME nebo FACR_PASSWORD.");
 
-function safeUrl(raw) {
+  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+  const context = await browser.newContext({ locale: "cs-CZ" });
+  const page = await context.newPage();
+
   try {
-    const u = new URL(raw);
-    for (const key of [...u.searchParams.keys()]) {
-      if (/token|code|auth|ticket|session/i.test(key)) u.searchParams.set(key, "[REDACTED]");
+    console.log("[FAČR] Přihlašuji...");
+    await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
+
+    const password = page.locator('input[type="password"]').first();
+    await password.waitFor({ state: "visible", timeout: 15000 });
+    const candidates = ['input[type="email"]','input[name*="email" i]','input[name*="user" i]','input[name*="login" i]','input[type="text"]'];
+    let userInput = null;
+    for (const selector of candidates) {
+      const el = page.locator(selector).first();
+      if ((await el.count()) && (await el.isVisible().catch(() => false))) { userInput = el; break; }
     }
-    return u.toString();
-  } catch {
-    return raw;
+    if (!userInput) throw new Error("Nenašel jsem přihlašovací pole.");
+
+    await userInput.fill(USERNAME);
+    await password.fill(PASSWORD);
+    const submit = page.locator('button[type="submit"],input[type="submit"],button:has-text("Přihlásit"),button:has-text("Přihlášení")').first();
+    if (await submit.count()) await submit.click(); else await password.press("Enter");
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
+    await page.waitForTimeout(1000);
+
+    // 1. vstup vytvoří legacy ASP.NET session
+    await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForTimeout(500);
+    // 2. vstup už otevře skutečný přehled
+    const response = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
+    if (response?.status() !== 200 || !page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
+      throw new Error(`FAČR přehled není dostupný, HTTP ${response?.status() ?? "?"}, URL ${page.url()}`);
+    }
+
+    const rows = await page.locator("tr").evaluateAll((trs) =>
+      trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " ")))
+    );
+
+    const matches = [];
+    for (const cells of rows) {
+      if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
+      const home = CLUBS[cells[5]];
+      const away = CLUBS[cells[6]];
+      if (!home || !away) {
+        console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]);
+        continue;
+      }
+
+      const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/);
+      const { date, time } = parseDate(cells[1] || "");
+      matches.push({
+        id: cells[0],
+        round: Number(cells[3]) || null,
+        date,
+        time,
+        home,
+        away,
+        homeScore: score ? Number(score[1]) : null,
+        awayScore: score ? Number(score[2]) : null,
+        played: Boolean(score),
+        status: cells[9] || null,
+      });
+    }
+
+    if (!matches.length) throw new Error("FAČR stránka neobsahuje žádná rozpoznaná utkání.");
+
+    const data = {
+      source: "is.fotbal.cz",
+      competitionId: COMPETITION_ID,
+      updatedAt: new Date().toISOString(),
+      matchCount: matches.length,
+      playedCount: matches.filter((m) => m.played).length,
+      matches,
+    };
+    console.log(`[FAČR] OK: ${data.matchCount} utkání, ${data.playedCount} s výsledkem.`);
+    return data;
+  } finally {
+    await browser.close();
   }
 }
 
-page.on("response", (response) => {
-  const url = response.url();
-  if (!url.startsWith("https://is.fotbal.cz/")) return;
-  const status = response.status();
-  if (status >= 300 && status < 400) {
-    console.log("REDIRECT", status, safeUrl(url), "->", safeUrl(response.headers()["location"] || ""));
-  }
-});
-
-try {
-  console.log("1/5 Otevírám IS FAČR...");
-  const loginResponse = await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-  console.log("Login HTTP:", loginResponse?.status());
-  console.log("URL po otevření:", safeUrl(page.url()));
-
-  const password = page.locator('input[type="password"]').first();
-  await password.waitFor({ state: "visible", timeout: 15000 });
-
-  const userCandidates = [
-    'input[type="email"]',
-    'input[name*="email" i]',
-    'input[name*="user" i]',
-    'input[name*="login" i]',
-    'input[type="text"]',
-  ];
-
-  let userInput = null;
-  for (const selector of userCandidates) {
-    const candidate = page.locator(selector).first();
-    if ((await candidate.count()) && (await candidate.isVisible().catch(() => false))) {
-      userInput = candidate;
-      break;
-    }
-  }
-  if (!userInput) throw new Error("Nenašel jsem pole pro uživatelské jméno.");
-
-  console.log("2/5 Přihlašuji...");
-  await userInput.fill(USERNAME);
-  await password.fill(PASSWORD);
-
-  const submit = page.locator(
-    'button[type="submit"], input[type="submit"], button:has-text("Přihlásit"), button:has-text("Přihlášení")'
-  ).first();
-
-  if (await submit.count()) await submit.click();
-  else await password.press("Enter");
-
-  await page.waitForLoadState("domcontentloaded").catch(() => {});
-  await page.waitForTimeout(1500);
-  console.log("URL po loginu:", safeUrl(page.url()));
-
-  const cookiesBefore = await context.cookies("https://is.fotbal.cz");
-  console.log("Cookies před starým IS:", cookiesBefore.map(c => c.name).sort().join(", "));
-
-  console.log("3/5 Otevírám PŘESNĚ uživatelův odkaz...");
-  const response = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForTimeout(1000);
-
-  console.log("První response HTTP:", response?.status());
-  console.log("Finální URL:", safeUrl(page.url()));
-
-  const chain = [];
-  let req = response?.request();
-  while (req) {
-    chain.unshift(safeUrl(req.url()));
-    req = req.redirectedFrom();
-  }
-  console.log("Navigation chain:");
-  chain.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
-
-  const cookiesAfter = await context.cookies("https://is.fotbal.cz");
-  console.log("Cookies po starém IS:", cookiesAfter.map(c => c.name).sort().join(", "));
-
-  // První vstup do /public vytvoří legacy ASP.NET session (.ASPXAUTH + ASP.NET_SessionId)
-  // a vrátí nás do nového IS. Teď, když legacy session existuje, otevřeme cílovou stránku podruhé.
-  console.log("3b/5 Legacy session vytvořena, otevírám přehled zápasů PODRUHÉ...");
-  const secondResponse = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForTimeout(1000);
-  console.log("Druhý pokus HTTP:", secondResponse?.status());
-  console.log("Druhý pokus finální URL:", safeUrl(page.url()));
-
-  console.log("4/5 Hledám odkazy/přechody do starého IS na profilu...");
-  const links = await page.locator('a[href]').evaluateAll((els) =>
-    els.map((a) => ({ text: (a.textContent || "").trim().replace(/\s+/g, " "), href: a.href }))
-      .filter((x) => /fromis|public\/|zapasy|soutez/i.test(x.href) || /zápas|soutěž|is fačr/i.test(x.text))
-      .slice(0, 30)
-  );
-  console.log("Relevantní odkazy:", JSON.stringify(links.map(x => ({ text: x.text, href: safeUrl(x.href) })), null, 2));
-
-  console.log("4b/5 Čtu strukturu tabulky utkání...");
-  const tableRows = await page.locator("tr").evaluateAll((rows) =>
-    rows.map((tr, index) => ({
-      index,
-      cells: Array.from(tr.querySelectorAll("th,td")).map((cell) =>
-        (cell.textContent || "").trim().replace(/\\s+/g, " ")
-      ),
-    })).filter((row) =>
-      row.cells.some((cell) => /2026423H1B|Brozany|Velemín|Vchynice|Žernoseky|Budyně|Černiv|Lovosice|Podlusky|Třebenice/i.test(cell))
-    )
-  );
-  console.log("MATCH_ROWS_START");
-  console.log(JSON.stringify(tableRows, null, 2));
-  console.log("MATCH_ROWS_END");
-
-  const bodyText = await page.locator("body").innerText().catch(() => "");
-  const lower = bodyText.toLocaleLowerCase("cs-CZ");
-  console.log("Brozany:", lower.includes("brozany"));
-  console.log("Velemín:", lower.includes("velemín") || lower.includes("velemin"));
-  console.log("Číslo 2026423H1B0404:", bodyText.includes("2026423H1B0404"));
-  console.log("Výsledek 6:20:", /6\s*:\s*20/.test(bodyText));
-
-  console.log("5/5 DIAGNOSTIKA HOTOVÁ.");
-} finally {
-  await browser.close();
+if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+  const data = await scrapeCompetition();
+  console.log(JSON.stringify(data, null, 2));
 }
