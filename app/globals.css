@@ -118,3 +118,8 @@ html[data-club] .match.favoriteMatch .score i{color:var(--club)!important}
 /* Sharper club crests at normal browser zoom */
 .standings img{width:36px!important;height:36px!important;object-fit:contain!important;flex:0 0 36px}
 @media(max-width:600px){.standings img{width:32px!important;height:32px!important;flex-basis:32px}}
+
+/* Goluj.cz brand header */
+.brandHeader{display:flex;align-items:center;justify-content:flex-start;margin:0 0 20px;padding:2px 2px 0}
+.brandHeader img{display:block;width:170px;height:auto;max-height:52px;object-fit:contain;object-position:left center}
+@media(max-width:600px){.brandHeader{margin-bottom:16px}.brandHeader img{width:145px;max-height:44px}}
