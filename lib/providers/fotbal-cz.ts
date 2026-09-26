@@ -63,10 +63,20 @@ export async function getCompetitionFeed(): Promise<CompetitionFeed> {
     };
   });
 
+  // Jakmile máme živý feed, je autoritativní i pro rozpis.
+  // Statická fixtures slouží pouze jako fallback; tím se neztratí zápasy,
+  // které dříve v ručním seznamu vůbec nebyly.
+  const matches: Match[] = live.length
+    ? live.map((m) => ({
+        ...m,
+        played: Boolean(m.played && m.homeScore !== null && m.awayScore !== null),
+      }))
+    : merged;
+
   const updatedAt = remote?.updatedAt ?? local.updatedAt ?? new Date().toISOString();
 
   return {
-    matches: merged,
+    matches,
     source: remote?.matches?.length || local.updatedAt ? "fotbal.cz-browser" : "fallback",
     updatedAt,
     error: remote?.matches?.length || local.updatedAt
