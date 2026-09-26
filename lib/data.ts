@@ -50,5 +50,18 @@ export const fixtures:Fixture[]=[
  {round:5,home:"TJ Sokol Černiv",away:"SK Sokol Malé Žernoseky",homeScore:null,awayScore:null,played:false},
  {round:5,home:"Městský Sportovní klub Třebenice",away:"ASK Lovosice",homeScore:null,awayScore:null,played:false},
  {round:5,date:"2026-10-03",time:"10:00",home:"Dynamo Podlusky",away:"TJ Viktoria Budyně nad Ohří",homeScore:null,awayScore:null,played:false},
+, {round:13,date:"2026-10-07",time:"16:30",home:"Dynamo Podlusky",away:"ASK Lovosice",homeScore:null,awayScore:null,played:false},
+ {round:6,date:"2026-10-10",time:"10:00",home:"SK Sokol Malé Žernoseky",away:"Dynamo Podlusky",homeScore:null,awayScore:null,played:false},
+ {round:6,date:"2026-10-10",time:"10:00",home:"SK Sokol Brozany",away:"TJ Slavoj Sulejovice / FK Vchynice",homeScore:null,awayScore:null,played:false},
+ {round:7,date:"2026-10-17",time:"10:00",home:"Dynamo Podlusky",away:"SK Velemín",homeScore:null,awayScore:null,played:false},
+ {round:7,date:"2026-10-18",time:"10:00",home:"TJ Sokol Černiv",away:"SK Sokol Brozany",homeScore:null,awayScore:null,played:false},
+ {round:14,date:"2026-10-21",time:"16:00",home:"TJ Viktoria Budyně nad Ohří",away:"Dynamo Podlusky",homeScore:null,awayScore:null,played:false},
+ {round:8,date:"2026-10-24",time:"10:00",home:"SK Sokol Brozany",away:"Dynamo Podlusky",homeScore:null,awayScore:null,played:false},
+ {round:15,date:"2026-10-28",time:"16:00",home:"Dynamo Podlusky",away:"SK Sokol Malé Žernoseky",homeScore:null,awayScore:null,played:false},
+ {round:15,date:"2026-10-28",time:"16:00",home:"TJ Slavoj Sulejovice / FK Vchynice",away:"SK Sokol Brozany",homeScore:null,awayScore:null,played:false},
+ {round:9,date:"2026-10-31",time:"10:00",home:"Dynamo Podlusky",away:"TJ Slavoj Sulejovice / FK Vchynice",homeScore:null,awayScore:null,played:false},
+ {round:10,date:"2026-11-07",time:"10:00",home:"Dynamo Podlusky",away:"TJ Sokol Černiv",homeScore:null,awayScore:null,played:false},
+ {round:10,date:"2026-11-07",time:"10:00",home:"ASK Lovosice",away:"SK Sokol Brozany",homeScore:null,awayScore:null,played:false},
+ {round:11,date:"2026-11-14",time:"10:00",home:"SK Sokol Brozany",away:"TJ Viktoria Budyně nad Ohří",homeScore:null,awayScore:null,played:false},
 ];
 export const fallbackMatches:Match[]=fixtures;
