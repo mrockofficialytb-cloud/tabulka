@@ -1,21 +1,15 @@
-name: Aktualizace Fotbal.cz
+name: Test IS FAČR
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *"
 
 permissions:
-  contents: write
-
-concurrency:
-  group: update-fotbal
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  scrape:
+  test-is-facr:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 3
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,25 +19,5 @@ jobs:
         with:
           node-version: 22
 
-      - name: Instalace projektu
-        run: npm install --no-package-lock
-
-      - name: Instalace Playwright
-        run: |
-          npm install --no-save --no-package-lock playwright@1.55.0
-          npx playwright install --with-deps chromium
-
-      - name: Načtení výsledků z Fotbal.cz
+      - name: Test veřejného IS FAČR
         run: node scripts/scrape-fotbal.mjs
-
-      - name: Uložení změny
-        run: |
-          if git diff --quiet -- public/data/fotbal.json; then
-            echo "Data se nezměnila."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/fotbal.json
-          git commit -m "Aktualizace výsledků Fotbal.cz"
-          git push
