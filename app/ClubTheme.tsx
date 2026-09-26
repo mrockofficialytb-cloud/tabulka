@@ -3,7 +3,7 @@ import{useEffect,useState}from"react";
 
 type T={name:string;short?:string;logo?:string};
 const colors:Record<string,string>={
-"TJ Slavoj Sulejovice / FK Vchynice":"#f8dc30","Dynamo Podlusky":"#019341","ASK Lovosice":"#31428b","SK Velemín":"#009fe0","TJ Viktoria Budyně nad Ohří":"#180b8e","TJ Sokol Černiv":"#297b40","SK Sokol Malé Žernoseky":"#b92c2b","Městský Sportovní klub Třebenice":"#17854e","SK Sokol Brozany":"#c62223"};
+"FK Vchynice / TJ Slavoj Sulejovice":"#f8dc30","Dynamo Podlusky":"#019341","ASK Lovosice":"#31428b","SK Velemín":"#009fe0","TJ Viktoria Budyně nad Ohří":"#180b8e","TJ Sokol Černiv":"#297b40","SK Sokol Malé Žernoseky":"#b92c2b","Městský Sportovní klub Třebenice":"#17854e","SK Sokol Brozany":"#c62223"};
 export default function ClubTheme({teams}:{teams:T[]}){
  const[selected,setSelected]=useState<string|null>(null),[open,setOpen]=useState(false),[mine,setMine]=useState(false);
  const mark=(name:string,onlyMine:boolean)=>{
