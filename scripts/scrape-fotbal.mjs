@@ -61,10 +61,40 @@ export async function scrapeCompetition() {
       throw new Error(`FAČR přehled není dostupný, HTTP ${response?.status() ?? "?"}, URL ${page.url()}`);
     }
 
-    const rows = await page.locator("tr").evaluateAll((trs) =>
-      trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " ")))
-    );
+    // Přehled je stránkovaný po 50 řádcích. Načti postupně všechny stránky.
+    const allRows = [];
+    const seenFirstMatchIds = new Set();
 
+    while (true) {
+      await page.waitForTimeout(300);
+
+      const rows = await page.locator("tr").evaluateAll((trs) =>
+        trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " ")))
+      );
+
+      const matchRows = rows.filter((cells) => /^2026423H1B\d{4}$/.test(cells[0] || ""));
+      if (!matchRows.length) break;
+
+      const firstId = matchRows[0][0];
+      if (seenFirstMatchIds.has(firstId)) break;
+      seenFirstMatchIds.add(firstId);
+      allRows.push(...matchRows);
+
+      const next = page.locator('a[title*="další" i], a[aria-label*="next" i], a:has-text("›"), a:has-text("→")').last();
+      const nextCount = await next.count();
+      if (!nextCount || !(await next.isVisible().catch(() => false))) break;
+
+      const href = await next.getAttribute("href");
+      const cls = (await next.getAttribute("class")) || "";
+      if (!href || /disabled/i.test(cls)) break;
+
+      await Promise.all([
+        page.waitForLoadState("domcontentloaded").catch(() => {}),
+        next.click(),
+      ]);
+    }
+
+    const rows = allRows;
     const matches = [];
     for (const cells of rows) {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
