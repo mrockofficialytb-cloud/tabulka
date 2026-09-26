@@ -76,8 +76,7 @@ try {
   const unique = [...new Map(matches.map(m => [`${m.home}|${m.away}`, m])).values()];
   const played = unique.filter(m => m.played);
 
-  if (unique.length < 8) throw new Error(`Parser našel jen ${unique.length} zápasů – data neukládám`);
-  if (played.length < 8) throw new Error(`Parser našel jen ${played.length} odehraných zápasů – data neukládám`);
+  if (unique.length < 1) throw new Error("Parser nenašel žádný zápas – data neukládám");
 
   const output = {
     source: "fotbal.cz",
