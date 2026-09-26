@@ -105,6 +105,14 @@ try {
   const cookiesAfter = await context.cookies("https://is.fotbal.cz");
   console.log("Cookies po starém IS:", cookiesAfter.map(c => c.name).sort().join(", "));
 
+  // První vstup do /public vytvoří legacy ASP.NET session (.ASPXAUTH + ASP.NET_SessionId)
+  // a vrátí nás do nového IS. Teď, když legacy session existuje, otevřeme cílovou stránku podruhé.
+  console.log("3b/5 Legacy session vytvořena, otevírám přehled zápasů PODRUHÉ...");
+  const secondResponse = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.waitForTimeout(1000);
+  console.log("Druhý pokus HTTP:", secondResponse?.status());
+  console.log("Druhý pokus finální URL:", safeUrl(page.url()));
+
   console.log("4/5 Hledám odkazy/přechody do starého IS na profilu...");
   const links = await page.locator('a[href]').evaluateAll((els) =>
     els.map((a) => ({ text: (a.textContent || "").trim().replace(/\s+/g, " "), href: a.href }))
