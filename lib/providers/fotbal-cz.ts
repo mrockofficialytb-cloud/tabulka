@@ -48,30 +48,19 @@ export async function getCompetitionFeed(): Promise<CompetitionFeed> {
   const live = (remote?.matches?.length ? remote.matches : local.matches ?? []) as GeneratedMatch[];
   const liveByFixture = new Map(live.map((m) => [key(m.home, m.away), m]));
 
-  const merged: Match[] = fixtures.map((fixture) => {
+  const matches: Match[] = fixtures.map((fixture) => {
     const found = liveByFixture.get(key(fixture.home, fixture.away));
-    if (!found) return fixture;
+    if (!found || !found.played || found.homeScore === null || found.awayScore === null) {
+      return fixture;
+    }
 
     return {
       ...fixture,
       homeScore: found.homeScore,
       awayScore: found.awayScore,
-      played:
-        found.played &&
-        found.homeScore !== null &&
-        found.awayScore !== null,
+      played: true,
     };
   });
-
-  // Jakmile máme živý feed, je autoritativní i pro rozpis.
-  // Statická fixtures slouží pouze jako fallback; tím se neztratí zápasy,
-  // které dříve v ručním seznamu vůbec nebyly.
-  const matches: Match[] = live.length
-    ? live.map((m) => ({
-        ...m,
-        played: Boolean(m.played && m.homeScore !== null && m.awayScore !== null),
-      }))
-    : merged;
 
   const updatedAt = remote?.updatedAt ?? local.updatedAt ?? new Date().toISOString();
 
