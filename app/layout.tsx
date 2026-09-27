@@ -4,7 +4,7 @@ export const metadata={
  title:"Góluj.cz · Výsledky a tabulka",
  description:"Výsledky, tabulky a zápasy mládežnického fotbalu přehledně na jednom místě.",
  applicationName:"Góluj.cz",
- icons:{icon:[{url:"/logos/ico.svg",type:"image/svg+xml"}],apple:[{url:"/logos/ico.svg"}],shortcut:"/logos/ico.svg"},
+ icons:{icon:[{url:"/logos/ico.svg",type:"image/svg+xml",sizes:"any"}],apple:[{url:"/logos/ico.svg",sizes:"180x180"}],shortcut:"/logos/ico.svg"},
  openGraph:{type:"website",locale:"cs_CZ",url:"https://goluj.cz",siteName:"Góluj.cz",title:"Góluj.cz · Výsledky a tabulka",description:"Výsledky, tabulky a zápasy mládežnického fotbalu přehledně na jednom místě.",images:[{url:"/opengraph-image",width:1200,height:630,alt:"Góluj.cz"}]},
  twitter:{card:"summary_large_image",title:"Góluj.cz · Výsledky a tabulka",description:"Výsledky, tabulky a zápasy mládežnického fotbalu přehledně na jednom místě.",images:["/opengraph-image"]}
 };
