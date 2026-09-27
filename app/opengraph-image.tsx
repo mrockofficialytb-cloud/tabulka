@@ -1,3 +1,3 @@
 import{ImageResponse}from"next/og";
-export const size={width:1200,height:630};export const contentType="image/png";
-export default function Image(){return new ImageResponse(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",justifyContent:"center",padding:"78px 90px",background:"#f7f8f9",color:"#101112",fontFamily:"Arial, sans-serif"}}><img src="https://goluj.cz/logos/logo.svg" width="520" height="140" style={{objectFit:"contain",objectPosition:"left center"}}/><div style={{width:"100%",height:"2px",background:"#dfe2e5",margin:"46px 0 34px"}}/><div style={{fontSize:42,fontWeight:700,letterSpacing:"-1px"}}>Výsledky, tabulky a zápasy</div><div style={{fontSize:25,color:"#6b7280",marginTop:13}}>Mládežnický fotbal přehledně na jednom místě.</div></div>,{...size})}
+export const size={width:512,height:512};export const contentType="image/png";
+export default function Image(){return new ImageResponse(<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#f7f8f9"}}><img src="https://goluj.cz/logos/ico.svg" width="360" height="355" style={{objectFit:"contain"}}/></div>,{...size})}
