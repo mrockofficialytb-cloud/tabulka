@@ -42,10 +42,43 @@ async function openCompetition(page) {
   throw new Error(`FAČR přehled není dostupný: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
+async function logFilterDiagnostics(page) {
+  const diagnostic = await page.evaluate(() => {
+    const safeValue = (el) => {
+      const type = (el.getAttribute("type") || "").toLowerCase();
+      if (type === "password" || /pass|heslo|token|secret/i.test(el.getAttribute("name") || "")) return "[redacted]";
+      return (el.value || "").slice(0, 120);
+    };
+    const inputs = Array.from(document.querySelectorAll("input, select, button"))
+      .filter((el) => {
+        const haystack = `${el.id || ""} ${el.getAttribute("name") || ""} ${el.getAttribute("type") || ""} ${el.getAttribute("value") || ""} ${el.textContent || ""}`;
+        return /datum|date|od|do|vyhled|hledat|zobraz|filtr|submit/i.test(haystack);
+      })
+      .slice(0, 30)
+      .map((el) => ({
+        tag: el.tagName.toLowerCase(),
+        type: el.getAttribute("type") || "",
+        id: el.id || "",
+        name: el.getAttribute("name") || "",
+        value: safeValue(el),
+        text: (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 80),
+        onclick: (el.getAttribute("onclick") || "").slice(0, 160),
+      }));
+    const forms = Array.from(document.forms).slice(0, 10).map((form) => ({
+      id: form.id || "",
+      name: form.getAttribute("name") || "",
+      method: form.method || "",
+      action: form.action || "",
+    }));
+    return { url: location.href, inputs, forms };
+  });
+  console.log("[FAČR-DIAG] " + JSON.stringify(diagnostic));
+}
+
 async function setFullSeasonRange(page) {
-  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
-    throw new Error(`Datumový filtr odmítnut mimo přehled zápasů: ${page.url()}`);
-  }
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) throw new Error(`Datumový filtr odmítnut mimo přehled zápasů: ${page.url()}`);
+
+  await logFilterDiagnostics(page);
 
   const dateInputs = page.locator('input[type="text"], input:not([type])');
   const candidates = [];
@@ -74,25 +107,19 @@ async function setFullSeasonRange(page) {
     if (!(await button.isVisible().catch(() => false))) continue;
     const label = `${await button.getAttribute("value") || ""} ${await button.textContent().catch(() => "") || ""}`.trim();
     if (/vyhled|hledat|zobraz|filtr|načíst/i.test(label)) {
-      await Promise.all([
-        page.waitForLoadState("domcontentloaded").catch(() => {}),
-        button.click(),
-      ]);
+      console.log(`[FAČR] Odesílám filtr tlačítkem: ${label.slice(0, 100)}`);
+      await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), button.click()]);
       clicked = true;
       break;
     }
   }
   if (!clicked) {
-    await Promise.all([
-      page.waitForLoadState("domcontentloaded").catch(() => {}),
-      candidates[1].press("Enter"),
-    ]);
+    console.log("[FAČR] Tlačítko filtru nenalezeno, odesílám Enterem.");
+    await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), candidates[1].press("Enter")]);
   }
   await page.waitForTimeout(1000);
-
-  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
-    throw new Error(`FAČR filtr přesměroval mimo přehled zápasů: ${page.url()}`);
-  }
+  console.log(`[FAČR] Po filtru URL: ${page.url()}`);
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) throw new Error(`FAČR filtr přesměroval mimo přehled zápasů: ${page.url()}`);
 }
 
 export async function scrapeCompetition() {
@@ -107,7 +134,6 @@ export async function scrapeCompetition() {
   try {
     console.log("[FAČR] Přihlašuji...");
     await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-
     const password = page.locator('input[type="password"]').first();
     await password.waitFor({ state: "visible", timeout: 15000 });
     const selectors = ['input[type="email"]','input[name*="email" i]','input[name*="user" i]','input[name*="login" i]','input[type="text"]'];
@@ -117,7 +143,6 @@ export async function scrapeCompetition() {
       if ((await el.count()) && (await el.isVisible().catch(() => false))) { userInput = el; break; }
     }
     if (!userInput) throw new Error("Nenašel jsem přihlašovací pole.");
-
     await userInput.fill(USERNAME);
     await password.fill(PASSWORD);
     const submit = page.locator('button[type="submit"],input[type="submit"],button:has-text("Přihlásit"),button:has-text("Přihlášení")').first();
@@ -130,19 +155,10 @@ export async function scrapeCompetition() {
 
     const allRows = [];
     const seen = new Set();
-
     async function collectRows() {
-      const rows = await page.locator("tr").evaluateAll((trs) =>
-        trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " ")))
-      );
-      for (const cells of rows) {
-        if (/^2026423H1B\d{4}$/.test(cells[0] || "") && !seen.has(cells[0])) {
-          seen.add(cells[0]);
-          allRows.push(cells);
-        }
-      }
+      const rows = await page.locator("tr").evaluateAll((trs) => trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((td) => (td.textContent || "").trim().replace(/\s+/g, " "))));
+      for (const cells of rows) if (/^2026423H1B\d{4}$/.test(cells[0] || "") && !seen.has(cells[0])) { seen.add(cells[0]); allRows.push(cells); }
     }
-
     await collectRows();
 
     for (let pageNumber = 2; pageNumber <= 10; pageNumber++) {
@@ -160,33 +176,21 @@ export async function scrapeCompetition() {
         }
         return null;
       }, pageNumber);
-
-      if (!pager) {
-        console.log(`[FAČR] Pager: další stránka ${pageNumber} nenalezena; celkem ${allRows.length} utkání.`);
-        break;
-      }
-
+      if (!pager) { console.log(`[FAČR] Pager: další stránka ${pageNumber} nenalezena; celkem ${allRows.length} utkání.`); break; }
       console.log(`[FAČR] Pager: otevírám stránku ${pageNumber}...`);
       const before = allRows.length;
-
       if (pager.target) {
         await page.evaluate(({ target, pageNumber }) => {
           if (typeof window.__doPostBack !== "function") throw new Error("__doPostBack není dostupný.");
           window.__doPostBack(target, `Page$${pageNumber}`);
         }, { target: pager.target, pageNumber });
       } else {
-        const link = page.locator("a").filter({ hasText: new RegExp(`^\\s*${pageNumber}\\s*$`) }).first();
-        await link.click();
+        await page.locator("a").filter({ hasText: new RegExp(`^\\s*${pageNumber}\\s*$`) }).first().click();
       }
-
       await page.waitForLoadState("domcontentloaded").catch(() => {});
       await page.waitForTimeout(700);
       await collectRows();
-
-      if (allRows.length === before) {
-        console.warn(`[FAČR] Pager: stránka ${pageNumber} nepřidala žádná utkání.`);
-        break;
-      }
+      if (allRows.length === before) { console.warn(`[FAČR] Pager: stránka ${pageNumber} nepřidala žádná utkání.`); break; }
     }
 
     const matches = [];
@@ -194,37 +198,13 @@ export async function scrapeCompetition() {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
       const home = CLUBS[cells[5]];
       const away = CLUBS[cells[6]];
-      if (!home || !away) {
-        console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]);
-        continue;
-      }
-
+      if (!home || !away) { console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]); continue; }
       const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/);
       const { date, time } = parseDate(cells[1] || "");
-      matches.push({
-        id: cells[0],
-        round: Number(cells[3]) || null,
-        date,
-        time,
-        home,
-        away,
-        homeScore: score ? Number(score[1]) : null,
-        awayScore: score ? Number(score[2]) : null,
-        played: Boolean(score),
-        status: cells[9] || null,
-      });
+      matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: score ? Number(score[1]) : null, awayScore: score ? Number(score[2]) : null, played: Boolean(score), status: cells[9] || null });
     }
-
     if (!matches.length) throw new Error("FAČR stránka neobsahuje žádná rozpoznaná utkání.");
-
-    const data = {
-      source: "is.fotbal.cz",
-      competitionId: COMPETITION_ID,
-      updatedAt: new Date().toISOString(),
-      matchCount: matches.length,
-      playedCount: matches.filter((m) => m.played).length,
-      matches,
-    };
+    const data = { source: "is.fotbal.cz", competitionId: COMPETITION_ID, updatedAt: new Date().toISOString(), matchCount: matches.length, playedCount: matches.filter((m) => m.played).length, matches };
     console.log(`[FAČR] OK: ${data.matchCount} utkání, ${data.playedCount} s výsledkem.`);
     return data;
   } finally {
