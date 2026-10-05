@@ -1,9 +1,9 @@
 import type { Match } from "../standings";
-import { fixtures } from "../data";
+import { fixtures, type Fixture } from "../data";
 import generated from "../../public/data/fotbal.json";
 
 export type CompetitionFeed = {
-  matches: Match[];
+  matches: Fixture[];
   source: "fotbal.cz-browser" | "fallback";
   updatedAt: string;
   error?: string;
@@ -24,8 +24,14 @@ type RenderFeed = {
 
 const LIVE_URL = "https://tabulka.onrender.com";
 
+function canonicalTeam(name: string) {
+  return name === "TJ Slavoj Sulejovice / FK Vchynice"
+    ? "FK Vchynice / TJ Slavoj Sulejovice"
+    : name;
+}
+
 function key(home: string, away: string) {
-  return home + "|" + away;
+  return canonicalTeam(home) + "|" + canonicalTeam(away);
 }
 
 async function loadLiveData(): Promise<RenderFeed | null> {
@@ -48,18 +54,23 @@ export async function getCompetitionFeed(): Promise<CompetitionFeed> {
   const live = (remote?.matches?.length ? remote.matches : local.matches ?? []) as GeneratedMatch[];
   const liveByFixture = new Map(live.map((m) => [key(m.home, m.away), m]));
 
-  const matches: Match[] = fixtures.map((fixture) => {
+  const matches: Fixture[] = fixtures.map((fixture) => {
     const found = liveByFixture.get(key(fixture.home, fixture.away));
-    if (!found || !found.played || found.homeScore === null || found.awayScore === null) {
-      return fixture;
+
+    const next: Fixture = {
+      ...fixture,
+      ...(found?.round != null ? { round: found.round } : {}),
+      ...(found?.date ? { date: found.date } : {}),
+      ...(found?.time ? { time: found.time } : {}),
+    };
+
+    if (found?.played && found.homeScore !== null && found.awayScore !== null) {
+      next.homeScore = found.homeScore;
+      next.awayScore = found.awayScore;
+      next.played = true;
     }
 
-    return {
-      ...fixture,
-      homeScore: found.homeScore,
-      awayScore: found.awayScore,
-      played: true,
-    };
+    return next;
   });
 
   const updatedAt = remote?.updatedAt ?? local.updatedAt ?? new Date().toISOString();
