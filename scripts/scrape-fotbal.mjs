@@ -42,84 +42,40 @@ async function openCompetition(page) {
   throw new Error(`FAČR přehled není dostupný: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
-async function logFilterDiagnostics(page) {
-  const diagnostic = await page.evaluate(() => {
-    const safeValue = (el) => {
-      const type = (el.getAttribute("type") || "").toLowerCase();
-      if (type === "password" || /pass|heslo|token|secret/i.test(el.getAttribute("name") || "")) return "[redacted]";
-      return (el.value || "").slice(0, 120);
-    };
-    const inputs = Array.from(document.querySelectorAll("input, select, button"))
-      .filter((el) => {
-        const haystack = `${el.id || ""} ${el.getAttribute("name") || ""} ${el.getAttribute("type") || ""} ${el.getAttribute("value") || ""} ${el.textContent || ""}`;
-        return /datum|date|od|do|vyhled|hledat|zobraz|filtr|submit/i.test(haystack);
-      })
-      .slice(0, 30)
-      .map((el) => ({
-        tag: el.tagName.toLowerCase(),
-        type: el.getAttribute("type") || "",
-        id: el.id || "",
-        name: el.getAttribute("name") || "",
-        value: safeValue(el),
-        text: (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 80),
-        onclick: (el.getAttribute("onclick") || "").slice(0, 160),
-      }));
-    const forms = Array.from(document.forms).slice(0, 10).map((form) => ({
-      id: form.id || "",
-      name: form.getAttribute("name") || "",
-      method: form.method || "",
-      action: form.action || "",
-    }));
-    return { url: location.href, inputs, forms };
-  });
-  console.log("[FAČR-DIAG] " + JSON.stringify(diagnostic));
-}
-
 async function setFullSeasonRange(page) {
-  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) throw new Error(`Datumový filtr odmítnut mimo přehled zápasů: ${page.url()}`);
-
-  await logFilterDiagnostics(page);
-
-  const dateInputs = page.locator('input[type="text"], input:not([type])');
-  const candidates = [];
-  for (let i = 0; i < await dateInputs.count(); i++) {
-    const input = dateInputs.nth(i);
-    if (!(await input.isVisible().catch(() => false))) continue;
-    const value = await input.inputValue().catch(() => "");
-    const name = await input.getAttribute("name") || "";
-    const id = await input.getAttribute("id") || "";
-    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(value) || /datum|date/i.test(`${name} ${id}`)) candidates.push(input);
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
+    throw new Error(`Datumový filtr odmítnut mimo přehled zápasů: ${page.url()}`);
   }
 
-  if (candidates.length < 2) {
-    console.warn(`[FAČR] Nalezeno pouze ${candidates.length} datumových polí; nechávám výchozí filtr.`);
-    return;
-  }
+  const from = page.locator("#MainContent_txtDatumOd");
+  const to = page.locator("#MainContent_txtDatumDo");
+  await from.waitFor({ state: "visible", timeout: 10000 });
+  await to.waitFor({ state: "visible", timeout: 10000 });
 
-  await candidates[0].fill(SEASON_FROM);
-  await candidates[1].fill(SEASON_TO);
+  console.log(`[FAČR] Výchozí rozsah: od=${await from.inputValue()}, do=${await to.inputValue() || "(prázdné)"}`);
+  await from.fill(SEASON_FROM);
+  await to.fill(SEASON_TO);
   console.log(`[FAČR] Nastavuji rozsah ${SEASON_FROM} – ${SEASON_TO}.`);
 
-  const buttons = page.locator('input[type="submit"], button[type="submit"], button');
-  let clicked = false;
-  for (let i = 0; i < await buttons.count(); i++) {
-    const button = buttons.nth(i);
-    if (!(await button.isVisible().catch(() => false))) continue;
-    const label = `${await button.getAttribute("value") || ""} ${await button.textContent().catch(() => "") || ""}`.trim();
-    if (/vyhled|hledat|zobraz|filtr|načíst/i.test(label)) {
-      console.log(`[FAČR] Odesílám filtr tlačítkem: ${label.slice(0, 100)}`);
-      await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), button.click()]);
-      clicked = true;
-      break;
-    }
+  // Stránka je ASP.NET WebForms. Na přehledu není klasické submit tlačítko;
+  // Enter proto filtr neodeslal. Odesíláme přímo hlavní Form1 se změněnými poli.
+  await Promise.all([
+    page.waitForLoadState("domcontentloaded").catch(() => {}),
+    page.locator("#Form1").evaluate((form) => HTMLFormElement.prototype.submit.call(form)),
+  ]);
+  await page.waitForTimeout(1200);
+
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
+    throw new Error(`FAČR filtr přesměroval mimo přehled zápasů: ${page.url()}`);
   }
-  if (!clicked) {
-    console.log("[FAČR] Tlačítko filtru nenalezeno, odesílám Enterem.");
-    await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), candidates[1].press("Enter")]);
+
+  const appliedFrom = await page.locator("#MainContent_txtDatumOd").inputValue().catch(() => "?");
+  const appliedTo = await page.locator("#MainContent_txtDatumDo").inputValue().catch(() => "?");
+  console.log(`[FAČR] Rozsah po POST: od=${appliedFrom}, do=${appliedTo || "(prázdné)"}`);
+
+  if (appliedFrom !== SEASON_FROM || appliedTo !== SEASON_TO) {
+    throw new Error(`FAČR nepřijal datumový rozsah: od=${appliedFrom}, do=${appliedTo}`);
   }
-  await page.waitForTimeout(1000);
-  console.log(`[FAČR] Po filtru URL: ${page.url()}`);
-  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) throw new Error(`FAČR filtr přesměroval mimo přehled zápasů: ${page.url()}`);
 }
 
 export async function scrapeCompetition() {
