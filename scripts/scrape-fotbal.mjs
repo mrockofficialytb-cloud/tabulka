@@ -8,7 +8,7 @@ const CLUBS = {
   "4230071": "TJ Viktoria Budyně nad Ohří",
   "4230121": "TJ Sokol Černiv",
   "4230381": "SK Sokol Malé Žernoseky",
-  "4230721": "TJ Slavoj Sulejovice / FK Vchynice",
+  "4230721": "FK Vchynice / TJ Slavoj Sulejovice",
   "4230701": "SK Velemín",
   "4230061": "SK Sokol Brozany",
   "4230461": "Dynamo Podlusky",
