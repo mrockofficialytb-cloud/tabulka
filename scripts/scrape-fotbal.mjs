@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 
 const COMPETITION_ID = "cb23dcde-b42b-4e12-ba8b-5344d9a32bb0";
 const LOGIN_URL = "https://is.fotbal.cz/?discipline=football";
-const TARGET = `https://is.fotbal.cz/public/zapasy/prehled-zapasu.aspx?soutez=${COMPETITION_ID}`;
+const TARGET = `https://is.fotbal.cz/public/zapasy/prehled-zapasu.aspx?soutez=${COMPETITION_ID}&utm_source=chatgpt.com`;
 const SEASON_FROM = "01.09.2026";
 const SEASON_TO = "30.06.2027";
 
@@ -24,7 +24,29 @@ function parseDate(value) {
   return { date: `${m[3]}-${m[2]}-${m[1]}`, time: m[4] };
 }
 
+async function openCompetition(page) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[FAČR] Otevírám přehled soutěže, pokus ${attempt}/3...`);
+      const response = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.waitForTimeout(1200);
+      if (response?.status() === 200 && page.url().includes("/public/zapasy/prehled-zapasu.aspx")) return;
+      lastError = new Error(`HTTP ${response?.status() ?? "?"}, URL ${page.url()}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/interrupted by another navigation/i.test(message)) lastError = error;
+      await page.waitForTimeout(1000);
+    }
+  }
+  throw new Error(`FAČR přehled není dostupný: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
+
 async function setFullSeasonRange(page) {
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
+    throw new Error(`Datumový filtr odmítnut mimo přehled zápasů: ${page.url()}`);
+  }
+
   const dateInputs = page.locator('input[type="text"], input:not([type])');
   const candidates = [];
   for (let i = 0; i < await dateInputs.count(); i++) {
@@ -33,19 +55,17 @@ async function setFullSeasonRange(page) {
     const value = await input.inputValue().catch(() => "");
     const name = await input.getAttribute("name") || "";
     const id = await input.getAttribute("id") || "";
-    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(value) || /datum|date/i.test(`${name} ${id}`)) {
-      candidates.push(input);
-    }
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(value) || /datum|date/i.test(`${name} ${id}`)) candidates.push(input);
   }
 
-  if (!candidates.length) {
-    console.warn("[FAČR] Nenašel jsem datumový filtr, pokračuji s výchozím rozsahem.");
+  if (candidates.length < 2) {
+    console.warn(`[FAČR] Nalezeno pouze ${candidates.length} datumových polí; nechávám výchozí filtr.`);
     return;
   }
 
   await candidates[0].fill(SEASON_FROM);
-  if (candidates[1]) await candidates[1].fill(SEASON_TO);
-  console.log(`[FAČR] Nastavuji rozsah ${SEASON_FROM} – ${candidates[1] ? SEASON_TO : "dnes"}.`);
+  await candidates[1].fill(SEASON_TO);
+  console.log(`[FAČR] Nastavuji rozsah ${SEASON_FROM} – ${SEASON_TO}.`);
 
   const buttons = page.locator('input[type="submit"], button[type="submit"], button');
   let clicked = false;
@@ -54,14 +74,25 @@ async function setFullSeasonRange(page) {
     if (!(await button.isVisible().catch(() => false))) continue;
     const label = `${await button.getAttribute("value") || ""} ${await button.textContent().catch(() => "") || ""}`.trim();
     if (/vyhled|hledat|zobraz|filtr|načíst/i.test(label)) {
-      await button.click();
+      await Promise.all([
+        page.waitForLoadState("domcontentloaded").catch(() => {}),
+        button.click(),
+      ]);
       clicked = true;
       break;
     }
   }
-  if (!clicked) await candidates[0].press("Enter");
-  await page.waitForLoadState("domcontentloaded").catch(() => {});
+  if (!clicked) {
+    await Promise.all([
+      page.waitForLoadState("domcontentloaded").catch(() => {}),
+      candidates[1].press("Enter"),
+    ]);
+  }
   await page.waitForTimeout(1000);
+
+  if (!page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
+    throw new Error(`FAČR filtr přesměroval mimo přehled zápasů: ${page.url()}`);
+  }
 }
 
 export async function scrapeCompetition() {
@@ -92,13 +123,9 @@ export async function scrapeCompetition() {
     const submit = page.locator('button[type="submit"],input[type="submit"],button:has-text("Přihlásit"),button:has-text("Přihlášení")').first();
     if (await submit.count()) await submit.click(); else await password.press("Enter");
     await page.waitForLoadState("domcontentloaded").catch(() => {});
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
-    const response = await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: 30000 });
-    if (response?.status() !== 200 || !page.url().includes("/public/zapasy/prehled-zapasu.aspx")) {
-      throw new Error(`FAČR přehled není dostupný, HTTP ${response?.status() ?? "?"}, URL ${page.url()}`);
-    }
-
+    await openCompetition(page);
     await setFullSeasonRange(page);
 
     const allRows = [];
