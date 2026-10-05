@@ -1,0 +1,19 @@
+name: Refresh FAČR data
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake Render and refresh FAČR data
+        run: |
+          curl --fail --show-error --silent \
+            --max-time 240 \
+            --retry 2 \
+            --retry-delay 10 \
+            https://tabulka.onrender.com/refresh > /dev/null
