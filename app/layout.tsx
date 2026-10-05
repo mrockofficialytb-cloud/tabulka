@@ -1,5 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import "./calendar-polish.css";
 export const metadata={
  metadataBase:new URL("https://goluj.cz"),
  title:"Góluj.cz · Výsledky a tabulka",
