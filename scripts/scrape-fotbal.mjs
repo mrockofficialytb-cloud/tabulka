@@ -38,36 +38,27 @@ async function openCompetition(page) {
 async function setFullSeasonRange(page) {
   const from = page.locator("#MainContent_txtDatumOd");
   const to = page.locator("#MainContent_txtDatumDo");
+  const search = page.locator("#btnSearch");
   await from.waitFor({ state: "visible", timeout: 10000 });
   await to.waitFor({ state: "visible", timeout: 10000 });
-
-  const actions = await page.locator("a, input, button").evaluateAll((els) => els.map((el) => ({
-    tag: el.tagName.toLowerCase(), id: el.id || "", name: el.getAttribute("name") || "",
-    text: (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
-    value: (el.getAttribute("value") || "").slice(0, 120), href: (el.getAttribute("href") || "").slice(0, 300),
-    onclick: (el.getAttribute("onclick") || "").slice(0, 300),
-  })).filter((x) => /postback|vyhled|hledat|zobraz|filtr|datum|search/i.test(`${x.id} ${x.name} ${x.text} ${x.value} ${x.href} ${x.onclick}`)).slice(0, 40));
-  console.log("[FAČR-ACTIONS] " + JSON.stringify(actions));
+  await search.waitFor({ state: "visible", timeout: 10000 });
 
   console.log(`[FAČR] Výchozí rozsah: od=${await from.inputValue()}, do=${await to.inputValue() || "(prázdné)"}`);
   await from.fill(SEASON_FROM);
   await to.fill(SEASON_TO);
   console.log(`[FAČR] Nastavuji rozsah ${SEASON_FROM} – ${SEASON_TO}.`);
+  console.log("[FAČR] Spouštím skutečné tlačítko Vyhledat (#btnSearch).");
 
-  // Zkusíme nejdřív skutečný ovládací prvek filtru, pokud ho DOM prozradí.
-  const filterAction = actions.find((x) => /vyhled|hledat|zobraz|filtr|search/i.test(`${x.id} ${x.name} ${x.text} ${x.value}`));
-  if (filterAction?.id) {
-    console.log(`[FAČR] Spouštím nalezenou akci filtru #${filterAction.id}.`);
-    await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), page.locator(`#${filterAction.id}`).click()]);
-  } else {
-    console.log("[FAČR] Akce filtru zatím nenalezena; diagnosticky odesílám Form1.");
-    await Promise.all([page.waitForLoadState("domcontentloaded").catch(() => {}), page.locator("#Form1").evaluate((form) => HTMLFormElement.prototype.submit.call(form))]);
-  }
+  await Promise.all([
+    page.waitForLoadState("domcontentloaded").catch(() => {}),
+    search.click(),
+  ]);
   await page.waitForTimeout(1200);
 
   const appliedFrom = await page.locator("#MainContent_txtDatumOd").inputValue().catch(() => "?");
   const appliedTo = await page.locator("#MainContent_txtDatumDo").inputValue().catch(() => "?");
-  console.log(`[FAČR] Rozsah po akci: od=${appliedFrom}, do=${appliedTo || "(prázdné)"}`);
+  console.log(`[FAČR] Rozsah po vyhledání: od=${appliedFrom}, do=${appliedTo || "(prázdné)"}`);
+  if (appliedFrom !== SEASON_FROM || appliedTo !== SEASON_TO) throw new Error(`FAČR nepřijal datumový rozsah: od=${appliedFrom}, do=${appliedTo}`);
 }
 
 export async function scrapeCompetition() {
@@ -114,7 +105,7 @@ export async function scrapeCompetition() {
     const matches = [];
     for (const cells of allRows) {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
-      const home = CLUBS[cells[5]], away = CLUBS[cells[6]]; if (!home || !away) continue;
+      const home = CLUBS[cells[5]], away = CLUBS[cells[6]]; if (!home || !away) { console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]); continue; }
       const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/), { date, time } = parseDate(cells[1] || "");
       matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: score ? Number(score[1]) : null, awayScore: score ? Number(score[2]) : null, played: Boolean(score), status: cells[9] || null });
     }
