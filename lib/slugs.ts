@@ -1,0 +1,3 @@
+export const teamSlugs:Record<string,string>={"TJ Viktoria Budyně nad Ohří":"budyne","TJ Sokol Černiv":"cerniv","FK Vchynice / TJ Slavoj Sulejovice":"vchynice-sulejovice","SK Sokol Brozany":"brozany","SK Velemín":"velemin","SK Sokol Malé Žernoseky":"male-zernoseky","Městský Sportovní klub Třebenice":"trebenice","Dynamo Podlusky":"podlusky","ASK Lovosice":"lovosice"};
+export const slugTeams=Object.fromEntries(Object.entries(teamSlugs).map(([name,slug])=>[slug,name])) as Record<string,string>;
+export const matchSlug=(round:number,home:string,away:string)=>`${round}-${teamSlugs[home]||"tym"}-${teamSlugs[away]||"tym"}`;
