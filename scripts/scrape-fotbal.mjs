@@ -42,19 +42,12 @@ async function setFullSeasonRange(page) {
   await from.waitFor({ state: "visible", timeout: 10000 });
   await to.waitFor({ state: "visible", timeout: 10000 });
   await search.waitFor({ state: "visible", timeout: 10000 });
-
   console.log(`[FAČR] Výchozí rozsah: od=${await from.inputValue()}, do=${await to.inputValue() || "(prázdné)"}`);
-  await from.fill(SEASON_FROM);
-  await to.fill(SEASON_TO);
+  await from.fill(SEASON_FROM); await to.fill(SEASON_TO);
   console.log(`[FAČR] Nastavuji rozsah ${SEASON_FROM} – ${SEASON_TO}.`);
   console.log("[FAČR] Spouštím skutečné tlačítko Vyhledat (#btnSearch).");
-
-  await Promise.all([
-    page.waitForLoadState("domcontentloaded").catch(() => {}),
-    search.click(),
-  ]);
-  await page.waitForTimeout(1200);
-
+  await search.click();
+  await page.waitForTimeout(1500);
   const appliedFrom = await page.locator("#MainContent_txtDatumOd").inputValue().catch(() => "?");
   const appliedTo = await page.locator("#MainContent_txtDatumDo").inputValue().catch(() => "?");
   console.log(`[FAČR] Rozsah po vyhledání: od=${appliedFrom}, do=${appliedTo || "(prázdné)"}`);
@@ -88,17 +81,17 @@ export async function scrapeCompetition() {
       for (const cells of rows) if (/^2026423H1B\d{4}$/.test(cells[0] || "") && !seen.has(cells[0])) { seen.add(cells[0]); allRows.push(cells); }
     }
     await collectRows();
+
     for (let pageNumber = 2; pageNumber <= 10; pageNumber++) {
-      const pager = await page.locator("a").evaluateAll((links, wanted) => {
-        const marker = `Page$${wanted}`;
-        for (const a of links) { const href = a.getAttribute("href") || "", onclick = a.getAttribute("onclick") || "", text = (a.textContent || "").trim(), source = `${href} ${onclick}`; if (source.includes(marker) || text === String(wanted)) { const m = source.match(/__doPostBack\(['"]([^'"]+)['"],['"]Page\$\d+['"]\)/); return { text, target: m ? m[1] : null }; } }
-        return null;
-      }, pageNumber);
-      if (!pager) { console.log(`[FAČR] Pager: další stránka ${pageNumber} nenalezena; celkem ${allRows.length} utkání.`); break; }
-      console.log(`[FAČR] Pager: otevírám stránku ${pageNumber}...`); const before = allRows.length;
-      if (pager.target) await page.evaluate(({ target, pageNumber }) => window.__doPostBack(target, `Page$${pageNumber}`), { target: pager.target, pageNumber });
-      else await page.locator("a").filter({ hasText: new RegExp(`^\\s*${pageNumber}\\s*$`) }).first().click();
-      await page.waitForLoadState("domcontentloaded").catch(() => {}); await page.waitForTimeout(700); await collectRows();
+      const pagerLink = page.locator("a").filter({ hasText: new RegExp(`^\\s*${pageNumber}\\s*$`) }).first();
+      if (!(await pagerLink.count()) || !(await pagerLink.isVisible().catch(() => false))) {
+        console.log(`[FAČR] Pager: další stránka ${pageNumber} nenalezena; celkem ${allRows.length} utkání.`); break;
+      }
+      console.log(`[FAČR] Pager: klikám na skutečný odkaz stránky ${pageNumber}...`);
+      const before = allRows.length;
+      await pagerLink.click();
+      await page.waitForTimeout(1200);
+      await collectRows();
       if (allRows.length === before) { console.warn(`[FAČR] Pager: stránka ${pageNumber} nepřidala žádná utkání.`); break; }
     }
 
