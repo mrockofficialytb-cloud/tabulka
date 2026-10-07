@@ -17,6 +17,11 @@ function parseDate(value) {
   return m ? { date: `${m[3]}-${m[2]}-${m[1]}`, time: m[4] } : { date: null, time: null };
 }
 
+function isClosedStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return /uzavřen|ukončen|odehrán|dohráno|skončen|potvrzen/.test(status);
+}
+
 async function openCompetition(page) {
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -100,9 +105,13 @@ export async function scrapeCompetition() {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
       const home = CLUBS[cells[5]], away = CLUBS[cells[6]]; if (!home || !away) { console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]); continue; }
       const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/), { date, time } = parseDate(cells[1] || "");
-      // IS FAČR zobrazuje u dosud nezadaného výsledku placeholder 0:0. Ten není výsledkem utkání.
-      const hasRealScore = Boolean(score) && !(Number(score[1]) === 0 && Number(score[2]) === 0);
-      matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: hasRealScore ? Number(score[1]) : null, awayScore: hasRealScore ? Number(score[2]) : null, played: hasRealScore, status: cells[9] || null });
+      const status = cells[9] || null;
+      const isZeroZero = Boolean(score) && Number(score[1]) === 0 && Number(score[2]) === 0;
+      // 0:0 může být v IS FAČR pouze dočasný placeholder otevřeného zápisu.
+      // Skutečnou remízu 0:0 přijmeme jen tehdy, když FAČR současně uvádí stav utkání/zápisu jako uzavřený či potvrzený.
+      const hasRealScore = Boolean(score) && (!isZeroZero || isClosedStatus(status));
+      if (isZeroZero && !hasRealScore) console.log(`[FAČR] ${cells[0]}: 0:0 ignoruji jako nepotvrzený stav (${status || "bez stavu"}).`);
+      matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: hasRealScore ? Number(score[1]) : null, awayScore: hasRealScore ? Number(score[2]) : null, played: hasRealScore, status });
     }
     if (!matches.length) throw new Error("FAČR stránka neobsahuje žádná rozpoznaná utkání.");
     const data = { source: "is.fotbal.cz", competitionId: COMPETITION_ID, updatedAt: new Date().toISOString(), matchCount: matches.length, playedCount: matches.filter((m) => m.played).length, matches };
