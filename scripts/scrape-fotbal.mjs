@@ -100,7 +100,9 @@ export async function scrapeCompetition() {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
       const home = CLUBS[cells[5]], away = CLUBS[cells[6]]; if (!home || !away) { console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]); continue; }
       const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/), { date, time } = parseDate(cells[1] || "");
-      matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: score ? Number(score[1]) : null, awayScore: score ? Number(score[2]) : null, played: Boolean(score), status: cells[9] || null });
+      // IS FAČR zobrazuje u dosud nezadaného výsledku placeholder 0:0. Ten není výsledkem utkání.
+      const hasRealScore = Boolean(score) && !(Number(score[1]) === 0 && Number(score[2]) === 0);
+      matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: hasRealScore ? Number(score[1]) : null, awayScore: hasRealScore ? Number(score[2]) : null, played: hasRealScore, status: cells[9] || null });
     }
     if (!matches.length) throw new Error("FAČR stránka neobsahuje žádná rozpoznaná utkání.");
     const data = { source: "is.fotbal.cz", competitionId: COMPETITION_ID, updatedAt: new Date().toISOString(), matchCount: matches.length, playedCount: matches.filter((m) => m.played).length, matches };
