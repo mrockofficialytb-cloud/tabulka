@@ -100,15 +100,15 @@ export async function scrapeCompetition() {
       if (allRows.length === before) { console.warn(`[FAČR] Pager: stránka ${pageNumber} nepřidala žádná utkání.`); break; }
     }
 
+    const todayCz = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Prague", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const matches = [];
     for (const cells of allRows) {
       if (!/^2026423H1B\d{4}$/.test(cells[0] || "") || cells.length < 10) continue;
       const home = CLUBS[cells[5]], away = CLUBS[cells[6]]; if (!home || !away) { console.warn("[FAČR] Neznámý klub:", cells[5], cells[6], cells[0]); continue; }
       const score = (cells[7] || "").match(/^(\d+)\s*:\s*(\d+)$/), { date, time } = parseDate(cells[1] || "");
       const status = cells[9] || null;
+      if (date === todayCz) console.log(`[FAČR][DIAG] ${cells[0]} ${home} - ${away}: ${JSON.stringify(cells)}`);
       const isZeroZero = Boolean(score) && Number(score[1]) === 0 && Number(score[2]) === 0;
-      // 0:0 může být v IS FAČR pouze dočasný placeholder otevřeného zápisu.
-      // Skutečnou remízu 0:0 přijmeme jen tehdy, když FAČR současně uvádí stav utkání/zápisu jako uzavřený či potvrzený.
       const hasRealScore = Boolean(score) && (!isZeroZero || isClosedStatus(status));
       if (isZeroZero && !hasRealScore) console.log(`[FAČR] ${cells[0]}: 0:0 ignoruji jako nepotvrzený stav (${status || "bez stavu"}).`);
       matches.push({ id: cells[0], round: Number(cells[3]) || null, date, time, home, away, homeScore: hasRealScore ? Number(score[1]) : null, awayScore: hasRealScore ? Number(score[2]) : null, played: hasRealScore, status });
